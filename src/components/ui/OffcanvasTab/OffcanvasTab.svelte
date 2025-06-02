@@ -2,9 +2,9 @@
   import { Fa } from 'svelte-fa';
   import { faXmark } from '@fortawesome/free-solid-svg-icons';
 
-  let { title, isOpen = false, closeOffcanvas, children } = $props();
+  let { title, isOpen = $bindable(false), closeOffcanvas, children } = $props();
 
-  let offcanvasTabElement: HTMLDivElement | undefined;
+  let offcanvasTabElement: HTMLDivElement | undefined = $state();
   let currentOffcanvasHeight = $state(300);
   let isDragging = $state(false);
   let startYPos = $state(0);
