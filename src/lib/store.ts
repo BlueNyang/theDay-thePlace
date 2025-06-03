@@ -1,5 +1,5 @@
 import { writable } from 'svelte/store';
-import categoryData from '$data/khsCategories.json';
+import categoryData from '../data/khsCategories.json';
 
 export interface Category {
 	id: string;
@@ -9,9 +9,8 @@ export interface Category {
 }
 
 export interface SearchFilter {
-	mainCategory: Category | null;
-	subCategory: Category | null;
-	detailedCategory: Category | null;
+	categoryType: string;
+	categoryId: string;
 }
 
 export interface SearchResult {
@@ -26,10 +25,6 @@ export interface SearchResult {
 export const categories: Category[] = categoryData;
 
 // search filter store
-export const searchFilters = writable<SearchFilter>({
-	mainCategory: null,
-	subCategory: null,
-	detailedCategory: null
-});
-export const selectedDetailedCategories = writable<Category[]>([]);
+export const categoryStore: Category[] = [];
+export const searchFilters = writable<SearchFilter[]>([]);
 export const searchResults = writable<SearchResult[]>([]);

@@ -1,11 +1,12 @@
 <script lang="ts">
   import { Fa } from 'svelte-fa';
   import { faXmark } from '@fortawesome/free-solid-svg-icons';
+  import { browser } from '$app/environment';
 
   let { title, isOpen = $bindable(false), closeOffcanvas, children } = $props();
 
   let offcanvasTabElement: HTMLDivElement | undefined = $state();
-  let currentOffcanvasHeight = $state(300);
+  let currentOffcanvasHeight = $state(browser ? window.innerHeight * 0.6 : 300); // 초기 높이는 화면 높이의 60%
   let isDragging = $state(false);
   let startYPos = $state(0);
   let startHeight = $state(0);
@@ -94,7 +95,8 @@
       <div class="drag-handle-indicator"></div>
     </div>
     <div class="offcanvas-tab-header">
-      <h3>{title}</h3>
+      <span class="header-span">&nbsp;</span>
+      <h3 class="header-title">{title}</h3>
       <button
         class="close-button"
         onclick={closeOffcanvas}
@@ -103,7 +105,10 @@
         <Fa icon={faXmark} />
       </button>
     </div>
-    <div class="offcanvas-tab-content">
+    <div
+      class="offcanvas-tab-content"
+      style="height: calc(100% - {currentOffcanvasHeight}px);"
+    >
       {@render children()}
     </div>
   </div>
@@ -115,7 +120,7 @@
     bottom: 0;
     left: 0;
     right: 0;
-    background-color: var(--color-background);
+    background-color: var(--background-color);
     box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
     overflow: hidden;
     display: flex;
@@ -130,12 +135,12 @@
     display: flex;
     justify-content: center;
     align-items: center;
-    background-color: var(--color-secondary);
+    background-color: var(--background-color);
     flex-shrink: 0;
   }
 
   .drag-handle-indicator {
-    width: 50px;
+    width: 10%;
     height: 5px;
     background-color: #bdbdbd;
     border-radius: 3px;
@@ -146,13 +151,36 @@
     justify-content: space-between;
     align-items: center;
     padding: 10px 15px;
-    border-bottom: 1px solid var(--color-border);
+    border-bottom: 1px solid var(--border-color);
     flex-shrink: 0;
+  }
+
+  .header-span {
+    background: none;
+    border: none;
+    font-size: 1.2rem;
+    padding: 5px;
+  }
+
+  .header-title {
+    margin: 0;
+    padding: 0;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+  }
+
+  .close-button {
+    background: none;
+    border: none;
+    font-size: 1.2rem;
+    padding: 5px;
+    cursor: pointer;
+    line-height: 1;
   }
 
   .offcanvas-tab-content {
     padding: 15px;
-    overflow-y: auto;
     flex-grow: 1;
   }
 
@@ -165,14 +193,5 @@
     height: 100%;
     background-color: rgba(0, 0, 0, 0.5);
     z-index: 1040;
-  }
-
-  .close-button {
-    background: none;
-    border: none;
-    font-size: 1.2rem;
-    padding: 5px;
-    cursor: pointer;
-    line-height: 1;
   }
 </style>

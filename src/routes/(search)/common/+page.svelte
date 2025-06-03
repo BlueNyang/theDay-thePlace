@@ -1,5 +1,4 @@
 <script lang="ts">
-  import type { Category } from '$lib/store';
   import CategorySelector from '../../../components/ui/CategorySeletor/CategorySelector.svelte';
 
   let name: string = 'hi';
