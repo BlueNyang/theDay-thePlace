@@ -1,14 +1,18 @@
 <script lang="ts">
-  import OffcanvasTab from '../OffcanvasTab/OffcanvasTab.svelte';
-  import { categories, categoryStore, searchFilters } from '$lib/store';
-  import type { Category, SearchFilter } from '$lib/store';
+  import OffcanvasTab from '$components/ui/OffcanvasTab/OffcanvasTab.svelte';
+  import { ccbaList, visitKorAreaCode2, searchFilter } from '$/stores/store';
+  import type { Category } from '$/stores/store';
   import { Fa } from 'svelte-fa';
   import {
     faChevronRight,
     faRotateLeft,
     faXmark,
+    faCheck,
   } from '@fortawesome/free-solid-svg-icons';
-  import { mount, onMount } from 'svelte';
+  import { onMount } from 'svelte';
+  import { get } from 'svelte/store';
+
+  let categoryList: Category[] = $state([]);
 
   // 오프캔버스 탭을 열고 닫기 위한 상태 변수
   let isOpen = $state(false);
@@ -18,25 +22,16 @@
   // 컴포넌트가 마운트되었는지 여부를 나타내는 변수
   let mounted = $state(false);
 
-  // 선택된 카테고리를 저장하는 변수
-  let selectedMain = $state<Category | null>(null);
-  let selectedSub = $state<Category | null>(null);
-  let detailedCategories: Category[] = $state([]);
+  // 현재 선택하려는 카테고리들을 저장하는 변수
+  let selectedCat1: Category | null = $state(null);
+  let selectedCat2: Category | null = $state(null);
 
-  // 선택된 카테고리들을 저장하는 배열
-  let selectedCategories: Category[] = $state([]);
-
-  // 메인 카테고리를 JSON에서 가져오기
-  // $derived를 사용하여 store의 변화를 감지하고 자동으로 업데이트
-  let mainCategories: Category[] = $derived(categories);
-
-  // 서브 카테고리는 선택된 메인 카테고리의 children을 가져옴
-  // 선택된 메인 카테고리가 변경될 때마다 서브 카테고리를 업데이트
-  let subCategories: Category[] = $derived(selectedMain?.children || []);
+  // 선택이 된 카테고리들을 저장하는 변수
+  let selectedCats: Category[] = $state([]);
 
   // Dock이 열려있는지 여부를 나타내는 변수
   // 선택된 카테고리가 있는 경우 Dock이 열려있다고 판단
-  let isDockOpen = $derived(checkDockOpen(selectedCategories));
+  let isDockOpen = $derived(checkDockOpen(selectedCats));
 
   // 카테고리 리스트의 높이를 동적으로 설정
   let categoryListHeight: string = $derived(
@@ -45,96 +40,148 @@
       : 'calc(100% - 35px)' // Dock이 닫혀있을 때
   );
 
-  // 선택된 서브 카테고리의 상세 카테고리를 가져오기 위한 URL
-  let detailedCategoriesURL: string | null = $derived(
-    getDetailedCategoriesURL(selectedMain)
-  );
-
-  // 도시 선택 후, 시군구 선택을 위한 URL을 생성
-  function getDetailedCategoriesURL(
-    mainCategory: Category | null
-  ): string | null {
-    if (mainCategory?.addressForDetail) {
-      if (selectedSub) {
-        return `${mainCategory.addressForDetail}?${selectedSub.id}`;
-      }
-    }
-    return null;
-  }
-
-  // 선택된 서브 카테고리의 상세 카테고리를 api로부터 가져오는 함수
-  async function getDetailedCategories(url: string | null): Promise<void> {
-    if (!url) {
-      detailedCategories = [];
+  function toggleSelectedCats(target: Category): void {
+    // target의 유효성 검사
+    if (
+      !target ||
+      target.item.length === 0 ||
+      target.item[0].item.length === 0
+    ) {
+      console.error(
+        '[CategorySelector] toggleSelectedCats: Invalid target category'
+      );
       return;
     }
-    // xml로 받게 됨.
-    isLoading = true;
-    try {
-      const response = await fetch(url);
-      if (!response.ok) {
-        alert('API 요청에 실패하였습니다. 다시 시도해주세요.');
-      }
-      const xmlText = await response.text();
-      const parser = new DOMParser();
-      const xmlDoc = parser.parseFromString(xmlText, 'application/xml');
-      // XML 파싱후 <msg> 태그의 내용을 확인.
-      // '성공'이 아니면 에러를 발생시킴.
-      const msg = xmlDoc.querySelector('msg');
-      if (!msg || msg.textContent !== '성공') {
-        throw new Error('Failed to fetch detailed categories');
+
+    const selectedCat1 = selectedCats.find((cat) => cat.code === target.code);
+    if (selectedCat1 === undefined) {
+      // selectedCat(SelectedCats에서 target를 검색한 결과)가 undefined이면
+      // seletectedCats에는 cat1부터 없는 경우임
+      selectedCats = [...selectedCats, target];
+      return;
+    }
+
+    // selectedCat이 undefined가 아니면
+    // selectedCats에서 cat2부터 순차적으로 탐색하여 확인
+    const selectedCat2 = selectedCat1.item.find(
+      (cat) => cat.code === target.item[0].code
+    );
+
+    if (selectedCat2 === undefined) {
+      // selectedCat2가 undefined이면
+      // selectedCats에는 cat2부터 없는 경우임
+
+      selectedCat1.item = [...selectedCat1.item, target.item[0]];
+      selectedCats = [...selectedCats];
+      return;
+    }
+
+    // selectedCat2가 undefined가 아니면
+    // selectedCats에서 cat3부터 순차적으로 탐색하여 확인
+    const selectedCat3 = selectedCat2.item.find(
+      (cat) => cat.code === target.item[0].item[0].code
+    );
+    if (selectedCat3 === undefined) {
+      // selectedCat3가 undefined이면
+      // selectedCats에는 cat3부터 없는 경우임
+
+      // 만약 선택된 cat3 level 카테고리의 name이 '전체'이면
+      // 해당 카테고리 cat3를 선택하지 않고, '전체' 카테고리를 선택하도록 함
+      if (target.item[0].item[0].name === '전체') {
+        selectedCat2.item = [target.item[0].item[0]];
+        selectedCats = [...selectedCats];
+        return;
+        // 만약 '전체'가 아니고, '전체'가 선택되어 있으면,
+        // '전체'를 선택 해제하고, 해당 카테고리를 선택하도록 함
+      } else if (
+        selectedCat2.item.some((cat) => cat.name === '전체') &&
+        target.item[0].item[0].name !== '전체'
+      ) {
+        selectedCat2.item = selectedCat2.item.filter(
+          (cat) => cat.name !== '전체'
+        );
       }
 
-      //item 태그에는 ccbaLcto(시군구코드,id), ccbaLctoNm(시군구명) 태그가 있음.
-      const items = xmlDoc.querySelectorAll('item');
-      const categories: Category[] = Array.from(items).map((item) => {
-        const id = item.querySelector('ccbaLcto')?.textContent || '';
-        const queryId = `ccbaLcto=${id}`;
-        const name = item.querySelector('ccbaLctoNm')?.textContent || '';
-        return { id: queryId, name, children: [] };
-      });
+      // selectedCat2에 item을 추가
+      selectedCat2.item = [...selectedCat2.item, target.item[0].item[0]];
+      selectedCats = [...selectedCats];
+      return;
+    }
 
-      isLoading = false;
-      detailedCategories = categories;
-    } catch (error) {
-      console.error('Error fetching detailed categories:', error);
-      isLoading = false;
-      detailedCategories = [];
+    selectedCat2.item = selectedCat2.item.filter(
+      (cat) => cat.code !== target.item[0].item[0].code
+    );
+    selectedCats = [...selectedCats];
+
+    // 만약 selectedCat2가 비어있으면
+    // selectedCat1에서 해당 카테고리를 제거
+    if (selectedCat2.item.length === 0) {
+      selectedCat1.item = selectedCat1.item.filter(
+        (cat) => cat.code !== target.item[0].code
+      );
+      selectedCats = [...selectedCats];
+    }
+
+    // 만약 selectedCat1이 비어있으면
+    // selectedCats에서 해당 카테고리를 제거
+    if (selectedCat1.item.length === 0) {
+      selectedCats = selectedCats.filter((cat) => cat.code !== target.code);
     }
   }
 
   // 선택된 카테고리가 현재 선택된 카테고리인지 확인하는 함수
-  function checkIsSelected(
-    type: string,
+  function checkSelected(
+    depth: 1 | 2 | 3,
     category: Category,
-    dependentcy: any | null = null
+    dependency: any
   ): boolean {
-    if (type === 'main') {
-      if (dependentcy === null) return false;
-      return selectedMain?.id === category.id;
-    } else if (type === 'sub') {
-      if (selectedMain?.addressForDetail)
-        return selectedSub?.id === category.id;
-      else return selectedCategories.some((cat) => cat.id === category.id);
-    } else if (type === 'detailed') {
-      return selectedCategories.some((cat) => cat.id === category.id);
+    if (!mounted) return false; // 컴포넌트가 마운트되지 않았으면 false 반환
+
+    if (depth === 1) {
+      if (!selectedCat1) return false;
+      return selectedCat1.code === category.code;
+    } else if (depth === 2) {
+      if (!selectedCat2) return false;
+      return selectedCat2.code === category.code;
+    } else {
+      if (!selectedCats) return false;
+      return selectedCats.some((cat) => {
+        if (!selectedCat1 || !selectedCat2) return false;
+        return (
+          cat.code === selectedCat1.code &&
+          cat.item.some((subCat) => {
+            if (!selectedCat2) return false; // item이 없으면 false
+            return (
+              subCat.code === selectedCat2.code &&
+              subCat.item.some((detailCat) => detailCat.code === category.code)
+            );
+          })
+        );
+      });
     }
-    return false;
   }
 
   // 오프캔버스 탭을 열고 닫는 함수
   function openOffcavans(): void {
     isOpen = true;
+    // 오프캔버스가 열릴 때 선택된 카테고리와 상태를 초기화
+    if (mounted) {
+      selectedCat1 = null;
+      selectedCat2 = null;
+      // 선택된 카테고리들을 초기화
+      selectedCats = get(searchFilter);
+    }
   }
 
   // 오프캔버스 탭을 닫는 함수
   function closeOffcanvas(): void {
     isOpen = false;
+    // 오프캔버스가 닫힐 때 선택된 카테고리와 상태를 초기화
   }
 
-  function checkDockOpen(selectedCat: Category[]): boolean {
+  function checkDockOpen(catsList: Category[]): boolean {
     if (!mounted) return false; // 컴포넌트가 마운트되지 않았으면 false 반환
-    if (selectedCat.length > 0) return true;
+    if (catsList.length > 0) return true;
 
     const dock = document.getElementById('selected-categories-dock');
     if (dock) {
@@ -149,9 +196,25 @@
 
   onMount(() => {
     mounted = true;
-    if (categoryStore) {
-      selectedCategories = categoryStore;
-    }
+
+    categoryList = [
+      {
+        code: 'ccba',
+        name: '문화유산',
+        item: ccbaList,
+      },
+      {
+        code: 'museum',
+        name: '박물관',
+        item: [
+          {
+            code: 'areaCode2',
+            name: '지역',
+            item: visitKorAreaCode2,
+          },
+        ],
+      },
+    ];
   });
 </script>
 
@@ -164,36 +227,50 @@
   </button>
 </div>
 <!-- 카테고리 선택 버튼 -->
-<!-- 선택된 카테고리 -->
-<div class="selected-categories">
-  {#if selectedCategories.length > 0}
-    <span>선택된 카테고리:</span>
-    <ul class="selected-category-list">
-      {#each selectedCategories as category (category.id)}
-        <li class="selected-category-item">
-          {category.name}
-          <button
-            class="remove-button"
-            onclick={() => {
-              selectedCategories = selectedCategories.filter(
-                (cat) => cat.id !== category.id
-              );
-            }}
-          >
-            <Fa icon={faXmark} />
-          </button>
-        </li>
+<!-- div tag list -->
+<div class="category-main">
+  <div class="category-main-tag-area">
+    <ul class="category-tag-list">
+      {#each selectedCats as cat1 (cat1.code)}
+        {#each cat1.item as cat2 (cat2.code)}
+          {#each cat2.item as cat3 (cat3.code)}
+            <li class="category-tag-item">
+              <button
+                class="tag-remove-button"
+                onclick={() => {
+                  const parameterCat = {
+                    code: cat1.code,
+                    name: cat1.name,
+                    item: [
+                      {
+                        code: cat2.code,
+                        name: cat2.name,
+                        item: [cat3],
+                      },
+                    ],
+                  };
+                  toggleSelectedCats(parameterCat);
+                }}
+              >
+                <Fa icon={faXmark} />
+              </button>
+              <span class="category-item-name">
+                {`${cat1.name}/${cat2.name}/${cat3.name}`}
+              </span>
+            </li>
+          {/each}
+        {/each}
       {/each}
     </ul>
-  {/if}
+  </div>
 </div>
-<!-- 선택된 카테고리 -->
+<!-- div tag list -->
 
 <!-- OffcanvasTab 컴포넌트로 카테고리 선택 UI -->
 <OffcanvasTab title="분류 선택" bind:isOpen {closeOffcanvas}>
   <!-- Offcanvas body -->
   <div class="offcanvas-body">
-    <!-- main-categories -->
+    <!-- cat1 -->
     <div class="main-categories category-sector">
       <!-- 대분류 카테고리 리스트 -->
       <div class="category-sector-header">
@@ -201,17 +278,17 @@
       </div>
       <!-- 선택된 카테고리들을 보여주는 영역 -->
       <ul class="category-list" style="height: {categoryListHeight};">
-        {#each mainCategories as category (category.id)}
+        {#each categoryList as category (category.code)}
           <li
-            class:selected={checkIsSelected('main', category, selectedMain)}
+            class:selected={checkSelected(1, category, [selectedCat1])}
             class="category-item"
           >
             <!-- li를 클릭하면 선택되도록하는 버튼 === 투명, wh 100% -->
             <button
               class="category-button"
               onclick={() => {
-                selectedMain = category;
-                selectedSub = null;
+                selectedCat1 = category;
+                selectedCat2 = null;
               }}
             >
               {category.name}
@@ -221,40 +298,27 @@
       </ul>
       <!-- 선택된 카테고리들을 보여주는 영역 -->
     </div>
-    <!-- main-categories -->
+    <!-- cat1 -->
 
-    <!-- sub-categories -->
+    <!-- cat2 -->
     <div class="sub-categories category-sector">
       <div class="category-sector-header">
         <h4>중분류</h4>
       </div>
       <ul class="category-list" style="height: {categoryListHeight};">
-        {#if selectedMain}
-          {#each subCategories as category (category.id)}
+        {#if selectedCat1}
+          {#each selectedCat1.item as category (category.code)}
             <li
-              class:selected={checkIsSelected('sub', category, selectedSub)}
+              class:selected={checkSelected(2, category, [
+                selectedCat1,
+                selectedCat2,
+              ])}
               class="category-item"
             >
               <button
                 class="category-button"
                 onclick={async () => {
-                  selectedSub = category;
-                  detailedCategories = [];
-                  // 상세 카테고리 API URL이 없으면 현재 level이 최하위
-                  if (!selectedMain?.addressForDetail) {
-                    if (
-                      selectedCategories.some((cat) => cat.id === category.id)
-                    ) {
-                      selectedCategories = selectedCategories.filter(
-                        (cat) => cat.id !== category.id
-                      );
-                      selectedSub = null;
-                    } else {
-                      selectedCategories = [...selectedCategories, category];
-                    }
-                  } else {
-                    await getDetailedCategories(detailedCategoriesURL);
-                  }
+                  selectedCat2 = category;
                 }}
               >
                 {category.name}
@@ -264,42 +328,42 @@
         {/if}
       </ul>
     </div>
-    <!-- sub-categories -->
+    <!-- cat2 -->
 
-    <!-- detailed-categories -->
+    <!-- cat3 -->
     <div class="detailed-categories category-sector">
       <div class="category-sector-header">
         <h4>소분류</h4>
       </div>
       <ul class="category-list" style="height: {categoryListHeight};">
-        {#if !selectedMain}
-          <p>메인 카테고리를 선택해주세요.</p>
-        {/if}
         {#if isLoading}
           <p>로딩 중...</p>
         {/if}
-        {#if selectedSub}
-          {#each detailedCategories as category (category.id)}
+        {#if selectedCat1 && selectedCat2}
+          {#each selectedCat2.item as category (category.code)}
             <li
-              class:selected={checkIsSelected(
-                'detailed',
-                category,
-                detailedCategories
-              )}
+              class:selected={checkSelected(3, category, [
+                selectedCat1,
+                selectedCat2,
+                selectedCats,
+              ])}
               class="category-item"
             >
               <button
                 class="category-button"
                 onclick={() => {
-                  if (
-                    selectedCategories.some((cat) => cat.id === category.id)
-                  ) {
-                    selectedCategories = selectedCategories.filter(
-                      (cat) => cat.id !== category.id
-                    );
-                  } else {
-                    selectedCategories = [...selectedCategories, category];
-                  }
+                  if (!selectedCat1 || !selectedCat2) return;
+                  toggleSelectedCats({
+                    code: selectedCat1.code,
+                    name: selectedCat1.name,
+                    item: [
+                      {
+                        code: selectedCat2.code,
+                        name: selectedCat2.name,
+                        item: [category],
+                      },
+                    ],
+                  });
                 }}
               >
                 {category.name}
@@ -309,7 +373,7 @@
         {/if}
       </ul>
     </div>
-    <!-- detailed-categories -->
+    <!-- cat3 -->
   </div>
   <!-- offcanvas body -->
 
@@ -330,10 +394,10 @@
             class="clear-button"
             aria-label="선택된 카테고리 초기화"
             onclick={() => {
-              selectedCategories = [];
-              selectedMain = null;
-              selectedSub = null;
-              detailedCategories = [];
+              selectedCats = [];
+              selectedCat1 = null;
+              selectedCat2 = null;
+              searchFilter.set(selectedCats); // 카테고리 스토어 초기화
             }}
           >
             <span class="clear-button-text">초기화</span>
@@ -351,22 +415,12 @@
           aria-label="선택된 카테고리 적용"
           onclick={() => {
             // 선택된 카테고리를 searchFilters에 저장
-            const result: SearchFilter[] = Array.from(
-              selectedCategories.map((cat): SearchFilter => {
-                const type: string = cat.id.split('=')[0];
-                const value: string = cat.id.split('=')[1];
-                return {
-                  categoryType: type,
-                  categoryId: value,
-                };
-              })
-            );
-            searchFilters.set(result);
+            searchFilter.set(selectedCats);
             closeOffcanvas();
           }}
         >
           <span class="clear-button-text">적용</span>
-          <Fa icon={faXmark} />
+          <Fa icon={faCheck} />
         </button>
       </div>
       <!-- 적용 버튼 section -->
@@ -378,20 +432,35 @@
       <!-- div tag list -->
       <div class="category-tag-area">
         <ul class="category-tag-list">
-          {#each selectedCategories as category (category.id)}
-            <li class="category-tag-item">
-              <button
-                class="tag-remove-button"
-                onclick={() => {
-                  selectedCategories = selectedCategories.filter(
-                    (cat) => cat.id !== category.id
-                  );
-                }}
-              >
-                <Fa icon={faXmark} />
-              </button>
-              <span class="category-item-name">{category.name}</span>
-            </li>
+          {#each selectedCats as cat1 (cat1.code)}
+            {#each cat1.item as cat2 (cat2.code)}
+              {#each cat2.item as cat3 (cat3.code)}
+                <li class="category-tag-item">
+                  <button
+                    class="tag-remove-button"
+                    onclick={() => {
+                      const parameterCat = {
+                        code: cat1.code,
+                        name: cat1.name,
+                        item: [
+                          {
+                            code: cat2.code,
+                            name: cat2.name,
+                            item: [cat3],
+                          },
+                        ],
+                      };
+                      toggleSelectedCats(parameterCat);
+                    }}
+                  >
+                    <Fa icon={faXmark} />
+                  </button>
+                  <span class="category-item-name">
+                    {`${cat1.name}/${cat2.name}/${cat3.name}`}
+                  </span>
+                </li>
+              {/each}
+            {/each}
           {/each}
         </ul>
       </div>
@@ -408,9 +477,9 @@
     justify-content: center;
     align-items: center;
     margin: 0.5rem 0;
-    padding: 2rem 0;
+    padding: 0;
     width: 100%;
-    height: 50px;
+    height: 60px;
   }
 
   /* 카테고리 선택 버튼 */
@@ -421,16 +490,38 @@
     padding: 0.5rem 1rem;
     font-size: 1rem;
     cursor: pointer;
-    border-radius: 4px;
+    border-radius: 10px;
     justify-content: space-between;
     align-items: center;
     transition: background-color 0.3s ease;
-    width: 80%;
+    width: 100%;
+    height: 100%;
   }
 
   /* 카테고리 선택 버튼 hover 효과 */
   .select-button:hover {
     background-color: var(--hover-color);
+  }
+
+  .category-main {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+    overflow-x: hidden;
+    overflow-y: auto;
+  }
+
+  .category-main-tag-area {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    height: 100%;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding: 0.5rem 0;
   }
 
   /* 오프캔버스 탭 */
