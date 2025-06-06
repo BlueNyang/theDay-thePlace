@@ -7,29 +7,90 @@
     faList,
     faHourglassStart,
   } from '@fortawesome/free-solid-svg-icons';
+  import {
+    searchFilter,
+    searchKeyword,
+    searchedCcbaItems,
+    searchedMuseumItems,
+  } from '$/stores/store';
+  import type { ServerResponse } from '$lib/searchTypes';
 
-  let searchString: string = '';
-  let searchedXML: string = '';
+  // 검색어를 저장하는 상태 변수
+  let keywordString: string = $state('');
+
+  // 로딩 상태 저장
+  let isLoading: boolean = $state(false);
+
+  // 검색 요청에 따른 json 응답 데이터를 searchedCcbaItems와 searchedMuseumItems에 저장
+  async function formatSearchedResponse(data: ServerResponse): Promise<void> {
+    searchedCcbaItems.set(data.ccbaItems);
+    searchedMuseumItems.set(data.museumItems);
+  }
+
+  // 클릭 시, searchKeyword와 searchFilter를 사용하여 검색 요청
+  async function handleSubmitClick(): Promise<void> {
+    isLoading = true;
+    try {
+      // Svelte server side에 서버로 검색 요청
+      // 검색어와 필터를 JSON 형태로 서버에 POST 요청
+      await fetch('/api/search', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          searchKeyword: $searchKeyword,
+          searchFilter: $searchFilter,
+        }),
+      }).then(async (response) => {
+        if (!response.ok) {
+          throw new Error('검색 요청이 실패했습니다.');
+        }
+        // 검색 요청이 성공하면 응답을 JSON으로 파싱
+        const responseData: ServerResponse = await response.json();
+        // 파싱된 응답 데이터를 포맷팅 및 저장
+        await formatSearchedResponse(responseData);
+      });
+    } catch (error) {
+      console.error('검색 요청 중 오류 발생:', error);
+    } finally {
+      // 검색이 완료되면 로딩 상태를 false로 설정
+      isLoading = false;
+    }
+  }
 </script>
 
 <div class="search-container">
+  <!-- 검색 페이지 헤더 -->
   <header class="search-header">
     <h1>검색</h1>
   </header>
-
+  <!-- 검색 페이지 헤더 -->
+  <!-- 검색 페이지 본문 -->
   <main class="search-main">
+    <!-- 검색바 컨테이너 -->
     <div class="searchbar-container container">
+      <!-- 검색바 타이틀 -->
       <div class="searchbar-title title">
         <h5>검색어</h5>
         <Fa icon={faSearch} />
       </div>
+      <!-- 검색바 타이틀 -->
+      <!-- 검색 바 -->
       <input
         type="text"
         placeholder="    검색어를 입력하세요"
-        bind:value={searchString}
+        bind:value={keywordString}
+        onchange={() => {
+          searchKeyword.set(keywordString.trim());
+        }}
+        disabled={isLoading}
         class="search-input"
       />
+      <!-- 검색 바 -->
     </div>
+    <!-- 검색바 컨테이너 -->
+    <!-- 카테고리 선택기 컨테이너 -->
     <div class="category-container container">
       <div class="category-title title">
         <h5>카테고리 필터</h5>
@@ -37,13 +98,23 @@
       </div>
       <CategorySelector />
     </div>
+    <!-- 카테고리 선택기 컨테이너 -->
+    <!-- 검색 버튼 컨테이너 -->
     <div class="submit-container container">
-      <button type="submit" class="search-button">
+      <button
+        type="submit"
+        class="search-button"
+        onclick={handleSubmitClick}
+        disabled={isLoading}
+      >
         검색
         <Fa icon={faSearch} />
       </button>
     </div>
+    <!-- 검색 버튼 컨테이너 -->
     <hr style="width: 90vw; margin: 2rem 5%;" />
+
+    <!-- 검색 결과 컨테이너 -->
     <div class="result-container container">
       <div class="result-title title">
         <h5>검색 결과</h5>
@@ -51,15 +122,15 @@
       </div>
       <!-- ResultList 컴포넌트는 검색 결과를 표시하는 부분입니다. -->
       <p>검색 결과가 여기에 표시됩니다.</p>
-      <ResultList
-        searchURL={import.meta.env.VITE_KHSAPI_URL}
-        keyword={searchString}
-      />
+      <ResultList />
     </div>
+    <!-- 검색 결과 컨테이너 -->
   </main>
+  <!-- 검색 페이지 본문 -->
 </div>
 
 <style>
+  /*  검색 페이지 스타일 */
   .search-main {
     display: flex;
     flex-direction: column;
@@ -67,6 +138,7 @@
     width: 100%;
   }
 
+  /* 컨테이너너 스타일 */
   .container {
     display: flex;
     justify-content: center;
@@ -76,6 +148,7 @@
     height: auto;
   }
 
+  /* 타이틀 스타일 */
   .title {
     display: flex;
     align-items: center;
@@ -86,12 +159,14 @@
     color: var(--text-color);
   }
 
+  /* 타이틀 텍스트 스타일 */
   .title h5 {
     margin: 0;
     padding: 0;
     font-size: 1rem;
   }
 
+  /* 검색바 스타일 */
   .search-input {
     width: 100%;
     padding: 0;
@@ -104,6 +179,7 @@
     background-color: var(--background-color);
   }
 
+  /* 검색 버튼 스타일 */
   .search-button {
     width: 100%;
     height: 40px;

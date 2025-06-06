@@ -48,44 +48,24 @@ export interface SearchedCcbaItem {
 	ccimDesc: string; // 이미지설명
 }
 
-export interface MuseumItemKeywordResponse {
-	lclsSystm3: string; // 분류체계 3Depth
-	cpyrhtDivCd: string; // 저작권 유형(Type1: 출처표시-권장, Type3: 1유형 + 변경금지)
-	firstimage: string; // 대표이미지
-	sigungucode: string; // 시군구코드
-	cat1: string; // 대분류
-	cat2: string; // 중분류
-	cat3: string; // 소분류
-	contentid: string; // 콘텐츠ID
-	tel: string; // 전화번호
-	title: string; // 제목
-	addr1: string; // 주소
-	areacode: string; // 지역코드
-	mapy: string; // GPS Y좌표
-	mlevel: string; // map 레벨
-	modifiedtime: string; // 수정일
-	firstimage2: string; // 대표이미지(썸네일)
-	mapx: string; // GPS X좌표
-	contenttypeid: string; // 콘텐츠 유형 ID
-	addr2: string; // 상세주소
-	createdtime: string; // 등록일
-	zipcode: string; // 우편번호
-	lDongRegnCd: string; // 법정동 시도코드
-	lDongSignguCd: string; // 법정동 시군구코드
-	lclsSystm1: string; // 분류체계 1Depth
-	lclsSystm2: string; // 분류체계 2Depth
+export interface MuseumAPIResponse {
+	response: {
+		header: {
+			resultCode: string; // 결과 코드
+			resultMsg: string; // 결과 메시지
+		};
+		body: {
+			items: {
+				item: MuseumItemResponse[]; // MuseumItemResponse 배열
+			};
+			numOfRows: number; // 한 페이지에 보여줄 아이템 수
+			pageNo: number; // 현재 페이지 번호
+			totalCount: number; // 전체 아이템 수
+		};
+	};
 }
 
-export interface MuseumItemAreaSyncResponse {
-	lclsSystm3: string; // 분류체계 3Deth
-	mapx: string; // GPS X좌표(WGS84 경도좌표) 응답
-	mapy: string; // GPS Y좌표(WGS84 위도좌표) 응답
-	mlevel: string; // Map Level 응답
-	modifiedtime: string; // 콘텐츠수정일
-	showflag: string; // 표출여부(0:비표출,1:표출)
-	sigungucode: string; // 시군구코드
-	tel: string; // 전화번호
-	title: string; // 콘텐츠제목
+export interface MuseumItemResponse {
 	addr1: string; // 주소(예, 서울중구다동)를응답
 	addr2: string; // 상세주소
 	areacode: string; // 지역코드
@@ -95,20 +75,22 @@ export interface MuseumItemAreaSyncResponse {
 	contentid: string; // 콘텐츠ID
 	contenttypeid: string; // 관광타입(관광지, 숙박등) ID
 	createdtime: string; // 콘텐츠최초등록일
-	cpyrhtDivCd: string; // 필수요청파라메터가없음(NO_MANDATORY_REQUEST_PARAMETERS_ERROR)
 	firstimage: string; // 원본대표이미지 (약 500*333 size) URL 응답
 	firstimage2: string; // 썸네일대표이미지 (약 150*100 size) URL 응답
+	cpyrhtDivCd: string; // 필수요청파라메터가없음(NO_MANDATORY_REQUEST_PARAMETERS_ERROR)
+	mapx: string; // GPS X좌표(WGS84 경도좌표) 응답
+	mapy: string; // GPS Y좌표(WGS84 위도좌표) 응답
+	mlevel: string; // Map Level 응답
+	modifiedtime: string; // 콘텐츠수정일
+	sigungucode: string; // 시군구코드
+	tel: string; // 전화번호
+	title: string; // 콘텐츠제목
 	zipcode: string; // 우편번호
 	lDongRegnCd: string; // 법정동 시도코드
 	lDongSignguCd: string; // 법정동 시군구코드
 	lclsSystm1: string; // 분류체계 1Deth
 	lclsSystm2: string; // 분류체계 2Deth
-	oldContentid: string; // 이전 컨텐츠 ID ( DB 저장 동기화시 이전 KEY 값으로 조회 용도 )
-}
-
-export interface ServerResponse {
-	ccbaItems: SearchedCcbaItem[];
-	museumItems: SearchedMuseumItem[];
+	lclsSystm3: string; // 분류체계 3Deth
 }
 
 export interface SearchedMuseumItem {
@@ -118,4 +100,9 @@ export interface SearchedMuseumItem {
 	addr1: string;
 	mapx: string;
 	mapy: string;
+}
+
+export interface ServerResponse {
+	ccbaItems: SearchedCcbaItem[];
+	museumItems: SearchedMuseumItem[];
 }

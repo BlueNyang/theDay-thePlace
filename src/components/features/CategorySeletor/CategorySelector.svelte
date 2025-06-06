@@ -208,7 +208,7 @@
         name: '박물관',
         item: [
           {
-            code: 'areaCode2',
+            code: 'areaCode',
             name: '지역',
             item: visitKorAreaCode2,
           },
