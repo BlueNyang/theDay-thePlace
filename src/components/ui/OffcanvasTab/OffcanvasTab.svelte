@@ -6,10 +6,21 @@
   let { title, isOpen = $bindable(false), closeOffcanvas, children } = $props();
 
   let offcanvasTabElement: HTMLDivElement | undefined = $state();
+  let offcanvasBackdropElement: HTMLDivElement | undefined = $state();
   let currentOffcanvasHeight = $state(browser ? window.innerHeight * 0.6 : 300); // 초기 높이는 화면 높이의 60%
   let isDragging = $state(false);
   let startYPos = $state(0);
   let startHeight = $state(0);
+
+  function handleCloseOffcanvas() {
+    offcanvasTabElement?.classList.remove('offcanvas-tab-enter-active');
+    offcanvasTabElement?.classList.add('offcanvas-tab-leave-active');
+    // 애니메이션이 끝난 후 offcanvas를 닫음
+    setTimeout(() => {
+      closeOffcanvas();
+      offcanvasTabElement?.classList.remove('offcanvas-tab-leave-active');
+    }, 300); // 애니메이션 시간과 일치시킴
+  }
 
   // 드래그 시 오프캔버스 탭의 높이를 조정하는 함수
   function handleDragStart(event: MouseEvent | TouchEvent) {
@@ -60,6 +71,11 @@
 
   // 컴포넌트 소멸 시 window 이벤트 리스너 제거
   $effect(() => {
+    document.body.style.overflow = isOpen ? 'hidden' : 'auto';
+    //offcanvasTabElement?.addEventListener('wheel', preventDefault);
+    //offcanvasTabElement?.addEventListener('touchmove', preventDefault);
+    //offcanvasBackdropElement?.addEventListener('wheel', preventDefault);
+    //offcanvasBackdropElement?.addEventListener('touchmove', preventDefault);
     return () => {
       // 드래그 중인 경우 이벤트 리스너 제거 (이벤트가 등록된 상태)
       if (isDragging) {
@@ -75,9 +91,15 @@
 {#if isOpen}
   <!-- svelte-ignore a11y_no_static_element_interactions -->
   <!-- svelte-ignore a11y_click_events_have_key_events -->
-  <div class="offcanvas-backdrop" onclick={closeOffcanvas}></div>
+  <div
+    class="offcanvas-backdrop"
+    bind:this={offcanvasBackdropElement}
+    onclick={closeOffcanvas}
+  ></div>
   <div
     class="offcanvas-tab"
+    class:offcanvas-tab-enter-active={isOpen}
+    class:offcanvas-tab-leave-active={false}
     bind:this={offcanvasTabElement}
     style="height: {currentOffcanvasHeight}px;"
   >
@@ -99,7 +121,7 @@
       <h3 class="header-title">{title}</h3>
       <button
         class="close-button"
-        onclick={closeOffcanvas}
+        onclick={handleCloseOffcanvas}
         aria-label="Close offcanvas"
       >
         <Fa icon={faXmark} />
@@ -126,6 +148,33 @@
     display: flex;
     flex-direction: column;
     z-index: 1050;
+    border-radius: 10px 10px 0 0;
+  }
+
+  @keyframes slideIn {
+    0% {
+      transform: translateY(100%);
+    }
+    100% {
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes slideOut {
+    0% {
+      transform: translateY(0);
+    }
+    100% {
+      transform: translateY(100%);
+    }
+  }
+
+  .offcanvas-tab-enter-active {
+    animation: slideIn 0.3s ease-out;
+  }
+
+  .offcanvas-tab-leave-active {
+    animation: slideOut 0.3s ease-out;
   }
 
   .offcanvas-tab-drag-handle {
@@ -180,7 +229,7 @@
   }
 
   .offcanvas-tab-content {
-    padding: 15px;
+    padding: 0;
     flex-grow: 1;
   }
 

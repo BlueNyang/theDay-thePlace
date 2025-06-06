@@ -229,7 +229,7 @@
 <!-- 카테고리 선택 버튼 -->
 <!-- div tag list -->
 <div class="category-main">
-  <div class="category-main-tag-area">
+  <div class="category-tag-area">
     <ul class="category-tag-list">
       {#each selectedCats as cat1 (cat1.code)}
         {#each cat1.item as cat2 (cat2.code)}
@@ -271,7 +271,7 @@
   <!-- Offcanvas body -->
   <div class="offcanvas-body">
     <!-- cat1 -->
-    <div class="main-categories category-sector">
+    <div class="cat1-categories category-sector">
       <!-- 대분류 카테고리 리스트 -->
       <div class="category-sector-header">
         <h4>분류</h4>
@@ -301,7 +301,7 @@
     <!-- cat1 -->
 
     <!-- cat2 -->
-    <div class="sub-categories category-sector">
+    <div class="cat2-categories category-sector">
       <div class="category-sector-header">
         <h4>중분류</h4>
       </div>
@@ -331,7 +331,7 @@
     <!-- cat2 -->
 
     <!-- cat3 -->
-    <div class="detailed-categories category-sector">
+    <div class="cat3-categories category-sector">
       <div class="category-sector-header">
         <h4>소분류</h4>
       </div>
@@ -385,28 +385,25 @@
     class:dock-closed={false}
   >
     <div class="dock-header">
-      <div class="dock-left">
-        <span class="dock-header-text">선택된 카테고리</span>
-        <!-- 초기화 버튼 section. 정사각형 -->
-        <div class="clear-button-section">
-          <!-- 초기화 버튼 -->
-          <button
-            class="clear-button"
-            aria-label="선택된 카테고리 초기화"
-            onclick={() => {
-              selectedCats = [];
-              selectedCat1 = null;
-              selectedCat2 = null;
-              searchFilter.set(selectedCats); // 카테고리 스토어 초기화
-            }}
-          >
-            <span class="clear-button-text">초기화</span>
-            <Fa icon={faRotateLeft} />
-          </button>
-          <!-- 초기화 버튼 -->
-        </div>
-        <!-- 초기화 버튼 section -->
+      <!-- 초기화 버튼 section. 정사각형 -->
+      <div class="clear-button-section">
+        <!-- 초기화 버튼 -->
+        <button
+          class="clear-button"
+          aria-label="선택된 카테고리 초기화"
+          onclick={() => {
+            selectedCats = [];
+            selectedCat1 = null;
+            selectedCat2 = null;
+            searchFilter.set(selectedCats); // 카테고리 스토어 초기화
+          }}
+        >
+          <span class="clear-button-text">초기화</span>
+          <Fa icon={faRotateLeft} />
+        </button>
+        <!-- 초기화 버튼 -->
       </div>
+      <!-- 초기화 버튼 section -->
       <!-- 적용 버튼 section -->
       <div class="apply-button-section">
         <!-- 적용 버튼 -->
@@ -514,16 +511,6 @@
     overflow-y: auto;
   }
 
-  .category-main-tag-area {
-    display: flex;
-    flex-direction: column;
-    width: 100%;
-    height: 100%;
-    overflow-x: auto;
-    overflow-y: hidden;
-    padding: 0.5rem 0;
-  }
-
   /* 오프캔버스 탭 */
   .offcanvas-body {
     display: flex;
@@ -537,12 +524,23 @@
   /* 카테고리 섹터 */
   .category-sector {
     flex: 1;
-    margin-right: 1rem;
-    width: 30%;
+  }
+
+  .cat1-categories {
+    flex-grow: 3;
+  }
+
+  .cat2-categories {
+    flex-grow: 3;
+  }
+
+  .cat3-categories {
+    flex-grow: 5;
   }
 
   /* 카테고리 섹터 헤더 */
   .category-sector-header {
+    display: flex;
     height: 35px;
     margin: 0;
     padding: 0;
@@ -562,8 +560,7 @@
     list-style: none;
     padding: 0;
     margin: 0;
-    border-radius: 2%;
-    border: 1px solid #000;
+    border: 1px solid #999;
     overflow-y: auto;
     min-height: 0;
     transition: height 0.5s ease-in-out;
@@ -610,7 +607,8 @@
     background: none;
     border: none;
     text-align: left;
-    padding: 0.5rem 1rem;
+    padding: 0.5rem;
+    padding-right: 0;
     font-size: 1rem;
     color: #333;
     cursor: pointer;
@@ -656,63 +654,56 @@
     align-items: center;
     justify-content: space-between;
     margin: 0;
-    padding: 0 0 0.5rem 1rem;
+    padding: 0;
+    padding-bottom: 0.5rem;
     width: calc(100% - 1rem);
     height: 25%;
     border-bottom: 3px solid var(--border-color);
   }
 
-  /* dock 헤더 왼쪽 영역 */
-  .dock-left {
-    display: flex;
-    align-items: center;
-    justify-content: flex-start;
-    flex-direction: row;
-    width: 100%;
-    height: 100%;
-  }
-
-  /* dock 탭 헤더 텍스트 */
-  .dock-header-text {
-    font-size: 1.2rem;
-    font-weight: bold;
-    flex-shrink: 0;
-  }
-
   /* 초기화 버튼 섹션 */
   .clear-button-section {
     display: flex;
+    flex: 1;
     align-items: center;
-    justify-content: center;
+    justify-content: start;
     flex-direction: row;
     height: 100%;
     width: 100px;
-    margin: 0 1rem 0 0;
+    margin: 0 0 0 1rem;
     padding: 0;
   }
 
   /* 초기화 버튼 */
   .clear-button {
-    background: none;
+    background: transparent;
     border: none;
-    font-size: 1.5rem;
+    border-radius: 100%;
+    font-size: 95%;
     color: var(--text-color);
     cursor: pointer;
-    padding: 0.5rem;
+    padding: 0;
     transition: color 0.3s ease;
     justify-content: center;
     align-items: center;
-    flex-shrink: 0;
+  }
+
+  /* 초기화 버튼 hover 효과 */
+  .clear-button-text {
+    font-weight: bold;
+    color: var(--text-color);
+    text-align: center;
   }
 
   .apply-button-section {
     display: flex;
+    flex: 1;
     align-items: center;
-    justify-content: center;
+    justify-content: end;
     flex-direction: row;
     height: 100%;
-    width: 100px;
-    margin: 0 0 0 1rem;
+    width: 100%;
+    margin: 0 1rem 0 0;
     padding: 0;
     right: 0;
   }
@@ -721,22 +712,13 @@
   .apply-button {
     background: none;
     border: none;
-    font-size: 1.5rem;
+    font-size: 95%;
     color: var(--text-color);
     cursor: pointer;
     padding: 0.5rem;
     transition: color 0.3s ease;
     justify-content: center;
     align-items: center;
-    flex-shrink: 0;
-  }
-
-  /* 초기화 버튼 hover 효과 */
-  .clear-button-text {
-    font-size: 1rem;
-    font-weight: bold;
-    color: var(--text-color);
-    text-align: center;
   }
 
   /* dock의 본문 */
@@ -757,7 +739,7 @@
     height: 100%;
     overflow-x: auto;
     overflow-y: hidden;
-    padding: 0.5rem 0;
+    padding: 0.5rem 0 0 0;
   }
 
   .category-tag-area::-webkit-scrollbar {
