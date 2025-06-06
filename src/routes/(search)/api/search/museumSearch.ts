@@ -1,6 +1,5 @@
 // 국가유산청의 Open API를 사용하여 검색하는 코드드
 
-import { json } from '@sveltejs/kit';
 import { env } from '$env/dynamic/private';
 import type {
 	Category,
@@ -18,39 +17,76 @@ export async function museumItemSearch(
 	museumFilter: Category,
 	Keyword: string
 ): Promise<SearchedMuseumItem[]> {
-	const museumLocationFilter: Category[] = museumFilter.item;
+	console.log('[museumSearch] museumItemSearch: called');
+	const isValidFilter =
+		!museumFilter ||
+		!museumFilter.item ||
+		museumFilter.item.length === 0 ||
+		museumFilter === undefined;
+
+	const museumLocationFilter: Category[] = isValidFilter ? [] : museumFilter.item;
 
 	let result: SearchedMuseumItem[] = [];
 
-	museumLocationFilter.forEach((cat2) => {
-		const apiType = Keyword === '' || !Keyword ? 'areaBasedSyncList2' : 'searchKeyword2';
-		const items: Category[] = cat2.item;
-		items.forEach(async (item) => {
-			await fetch(
-				`${VISITKOREA_API_URL}/${apiType}?serviceKey=${
-					API_KEY
-				}&MobildOS=Web&MobileApp=TheDay_ThePlace&cat1=A02&cat2=A0206&cat3=A02060300&_type=json&${
-					cat2.code
-				}=${item.code}&${apiType === 'searchKeyword2' ? `keyword=${encodeURIComponent(Keyword)}` : ''}`
-			).then(async (response) => {
-				if (!response.ok) {
-					throw new Error(`HTTP error! status: ${response.status}`);
-				}
-				const data: MuseumAPIResponse = await response.json();
-				const museumItems: MuseumItemResponse[] = data.response.body.items.item;
-				museumItems.forEach((mItem) => {
-					const searchedItem: SearchedMuseumItem = {
-						contentid: mItem.contentid,
-						title: mItem.title,
-						firstimage: mItem.firstimage || '',
-						addr1: mItem.addr1,
-						mapx: mItem.mapx,
-						mapy: mItem.mapy
-					};
-					result.push(searchedItem);
+	const apiType = Keyword === '' || !Keyword ? 'areaBasedSyncList2' : 'searchKeyword2';
+	if (isValidFilter) {
+		await fetch(
+			`${VISITKOREA_API_URL}/${apiType}?serviceKey=${
+				API_KEY
+			}&MobileOS=WEB&MobileApp=TheDay_ThePlace&cat1=A02&cat2=A0206&cat3=A02060300&_type=json&${
+				apiType === 'searchKeyword2' ? `keyword=${encodeURIComponent(Keyword)}` : ''
+			}`
+		).then(async (response) => {
+			await processingResponse(response)
+				.then((data) => {
+					result = data;
+				})
+				.catch((error) => {
+					console.error(error);
 				});
-			});
 		});
-	});
+	} else {
+		for (const cat2 of museumLocationFilter) {
+			const items: Category[] = cat2.item;
+			for (const item of items) {
+				await fetch(
+					`${VISITKOREA_API_URL}/${apiType}?serviceKey=${
+						API_KEY
+					}&MobileOS=WEB&MobileApp=TheDay_ThePlace&cat1=A02&cat2=A0206&cat3=A02060300&_type=json&${
+						cat2.code
+					}=${item.code}&${apiType === 'searchKeyword2' ? `keyword=${encodeURIComponent(Keyword)}` : ''}`
+				).then(async (response) => {
+					await processingResponse(response)
+						.then((data) => {
+							result = [...result, ...data];
+						})
+						.catch((error) => {
+							console.error(error);
+						});
+				});
+			}
+		}
+	}
+	return result;
+}
+
+async function processingResponse(response: Response): Promise<SearchedMuseumItem[]> {
+	const result: SearchedMuseumItem[] = [];
+	if (!response.ok) {
+		throw new Error(`HTTP error! status: ${response.status}`);
+	}
+	const data: MuseumAPIResponse = await response.json();
+	const museumItems: MuseumItemResponse[] = data.response.body.items.item;
+	for (const mItem of museumItems) {
+		const searchedItem: SearchedMuseumItem = {
+			contentid: mItem.contentid,
+			title: mItem.title,
+			firstimage: mItem.firstimage || '',
+			addr1: mItem.addr1,
+			mapx: mItem.mapx,
+			mapy: mItem.mapy
+		};
+		result.push(searchedItem);
+	}
 	return result;
 }

@@ -13,7 +13,7 @@ interface ApiRequestData {
 	searchFilter: Category[];
 }
 
-// POST 요청에 대한 응답답
+// POST 요청에 대한 응답
 export async function POST({ request }: RequestEvent): Promise<Response> {
 	// Data를 JSON 형식으로 파싱
 	const requestData: ApiRequestData = await request.json();
@@ -46,7 +46,7 @@ export async function POST({ request }: RequestEvent): Promise<Response> {
 
 		// CCBA는 API가 Keyword를 parameter로 받지 않으므로, 필터 검색 후,
 	} catch (error) {
-		console.error('[api/ccbaBasicInfo] API request error:', error);
+		console.error('[api/+server.ts] API request error:', error);
 		const errorMessage = error instanceof Error ? error.message : 'Unknown error';
 		return json({ error: `Internal Server Error: ${errorMessage}` }, { status: 500 });
 	}

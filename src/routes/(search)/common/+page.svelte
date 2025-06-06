@@ -2,11 +2,7 @@
   import Fa from 'svelte-fa';
   import CategorySelector from '$components/features/CategorySeletor/CategorySelector.svelte';
   import ResultList from '$components/features/ResultList/ResultList.svelte';
-  import {
-    faSearch,
-    faList,
-    faHourglassStart,
-  } from '@fortawesome/free-solid-svg-icons';
+  import { faSearch, faList } from '@fortawesome/free-solid-svg-icons';
   import {
     searchFilter,
     searchKeyword,
@@ -23,6 +19,7 @@
 
   // 검색 요청에 따른 json 응답 데이터를 searchedCcbaItems와 searchedMuseumItems에 저장
   async function formatSearchedResponse(data: ServerResponse): Promise<void> {
+    console.log('검색 결과:', data);
     searchedCcbaItems.set(data.ccbaItems);
     searchedMuseumItems.set(data.museumItems);
   }
@@ -116,12 +113,6 @@
 
     <!-- 검색 결과 컨테이너 -->
     <div class="result-container container">
-      <div class="result-title title">
-        <h5>검색 결과</h5>
-        <Fa icon={faHourglassStart} />
-      </div>
-      <!-- ResultList 컴포넌트는 검색 결과를 표시하는 부분입니다. -->
-      <p>검색 결과가 여기에 표시됩니다.</p>
       <ResultList />
     </div>
     <!-- 검색 결과 컨테이너 -->

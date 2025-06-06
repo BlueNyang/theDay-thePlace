@@ -4,6 +4,15 @@ export interface Category {
 	item: Category[];
 }
 
+export interface CcbaItemAPIResponse {
+	result: {
+		totalCnt: number;
+		pageUnit: number;
+		pageIndex: number;
+		item: CcbaItemResponse[]; // CcbaItemResponse 배열
+	};
+}
+
 export interface CcbaItemResponse {
 	sn: number; // 순번
 	no: number; // 고유 키값

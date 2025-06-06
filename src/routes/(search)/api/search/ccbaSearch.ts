@@ -1,8 +1,9 @@
 // 국가유산청의 Open API를 사용하여 검색하는 코드드
 
-import { json } from '@sveltejs/kit';
+import { XMLParser } from 'fast-xml-parser';
 import type {
 	Category,
+	CcbaItemAPIResponse,
 	CcbaItemResponse,
 	CcbaItemImageResponse,
 	SearchedCcbaItem
@@ -17,34 +18,48 @@ export async function ccbaItemSearch(
 	ccbaFilter: Category,
 	Keyword: string
 ): Promise<SearchedCcbaItem[]> {
-	const ccbaKdcd: Category[] = ccbaFilter.item.filter((cat) => cat.code === 'ccbaKdcd')[0].item;
-	const ccbaCtcd: Category[] = ccbaFilter.item.filter((cat) => cat.code === 'ccbaCtcd')[0].item;
-	const ccbaPcd1: Category[] = ccbaFilter.item.filter((cat) => cat.code === 'ccbaPcd1')[0].item;
+	console.log('[ccbaSearch] ccbaItemSearch: called');
+	const isInvalidFilter =
+		!ccbaFilter || !ccbaFilter.item || ccbaFilter.item.length === 0 || ccbaFilter === undefined;
+
+	const ccbaItems: Category[] = isInvalidFilter ? [] : ccbaFilter.item;
 
 	let result: SearchedCcbaItem[] = [];
 
 	// 상위 함수에서 try-catch로 에러를 처리
 	// API query에 한 항목을 여러 개 요청 할 수 없으므로, map을 사용하여 해당 동작을 하도록 구현
-	ccbaKdcd.map((kdcd) => {
-		ccbaCtcd.map((ctcd) => {
-			ccbaPcd1.map(async (pcd1) => {
-				await fetch(
-					`${CCBA_API_URL}?ccbaKdcd=${kdcd.code}&ccbaCtcd=${ctcd.code}&ccbaPcd1=${pcd1.code}${
-						Keyword ? `&ccbaMnm1=${encodeURIComponent(Keyword)}` : ''
-					}`
-				).then(async (response) => {
-					if (!response.ok) {
-						throw new Error(`HTTP error! status: ${response.status}`);
-					}
-					const xml = await response.text();
-					const ccbaItems: SearchedCcbaItem[] = await getCCbaItems(xml);
-					result = result.concat(ccbaItems);
-				});
-			});
+	if (isInvalidFilter) {
+		await fetch(
+			`${CCBA_API_URL}?pageNo=1&numOfRows=1000${Keyword ? `&ccbaMnm1=${encodeURIComponent(Keyword)}` : ''}`
+		).then(async (response) => {
+			if (!response.ok) {
+				throw new Error(`HTTP error! status: ${response.status}`);
+			}
+			const xml = await response.text();
+			const ccbaItems: SearchedCcbaItem[] = await getCCbaItems(xml);
+			result.push(...ccbaItems);
 		});
-	});
+	}
+	for (const cat2 of ccbaItems) {
+		const cat3: Category[] = cat2.item;
+		for (const item of cat3) {
+			console.log(`[ccbaSearch] Fetching items for category: ${cat2.name} - ${item.name}`);
+			await fetch(
+				`${CCBA_API_URL}?${cat2.code}=${item.code}&pageNo=1&numOfRows=1000${
+					Keyword ? `&ccbaMnm1=${encodeURIComponent(Keyword)}` : ''
+				}`
+			).then(async (response) => {
+				if (!response.ok) {
+					throw new Error(`HTTP error! status: ${response.status}`);
+				}
+				const xml = await response.text();
+				const ccbaItems: SearchedCcbaItem[] = await getCCbaItems(xml);
+				result.push(...ccbaItems);
+			});
+		}
+	}
 
-	// 중복 있으면 제거
+	// 중복 제거
 	result = result.filter(
 		(item, index, self) =>
 			index === self.findIndex((t) => t.ccbaAsno === item.ccbaAsno && t.ccbaKdcd === item.ccbaKdcd)
@@ -61,70 +76,59 @@ export async function ccbaItemSearch(
 async function getCCbaItems(responseXML: string): Promise<SearchedCcbaItem[]> {
 	const ccbaItems = parseXMLToCcbaItemResponse(responseXML);
 	let result: SearchedCcbaItem[] = [];
-	ccbaItems.forEach(async (item) => {
-		await fetch(
-			`${CCBA_IMAGE_API_URL}?ccbaKdcd=${item.ccbaKdcd}&ccbaAsno=${item.ccbaAsno}&ccbaCtcd=${item.ccbaCtcd}`
-		).then(async (response) => {
-			if (!response.ok) {
-				throw new Error(`HTTP error! status: ${response.status}`);
-			}
-			const xml = await response.text();
-			const image: CcbaItemImageResponse = parseXMLToCcbaItemImageResponse(xml);
-			const searchedItem: SearchedCcbaItem = {
-				no: item.no,
-				ccmaName: item.ccmaName,
-				ccbaMnm1: item.ccbaMnm1,
-				ccbaCtcdNm: item.ccbaCtcdNm,
-				ccbaAdmin: item.ccbaAdmin,
-				ccbaKdcd: item.ccbaKdcd,
-				ccbaAsno: item.ccbaAsno,
-				ccbaCtcd: item.ccbaCtcd,
-				imageUrl: image.imageUrl,
-				ccimDesc: image.ccimDesc
-			};
-			result.push(searchedItem);
-		});
-	});
+	try {
+		for (const item of ccbaItems) {
+			await fetch(
+				`${CCBA_IMAGE_API_URL}?ccbaKdcd=${item.ccbaKdcd}&ccbaAsno=${item.ccbaAsno}&ccbaCtcd=${item.ccbaCtcd}`
+			).then(async (response) => {
+				if (!response.ok) {
+					throw new Error(`HTTP error! status: ${response.status}`);
+				}
+				const xml = await response.text();
+				const image: CcbaItemImageResponse = parseXMLToCcbaItemImageResponse(xml);
+				const searchedItem: SearchedCcbaItem = {
+					no: item.no,
+					ccmaName: item.ccmaName,
+					ccbaMnm1: item.ccbaMnm1,
+					ccbaCtcdNm: item.ccbaCtcdNm,
+					ccbaAdmin: item.ccbaAdmin,
+					ccbaKdcd: item.ccbaKdcd,
+					ccbaAsno: item.ccbaAsno,
+					ccbaCtcd: item.ccbaCtcd,
+					imageUrl: image.imageUrl,
+					ccimDesc: image.ccimDesc
+				};
+				result.push(searchedItem);
+			});
+		}
+	} catch (error) {
+		console.error('[ccbaSearch] getCCbaItems error:', error);
+		throw new Error('Failed to fetch CCBA items');
+	}
 	return result;
 }
 
 function parseXMLToCcbaItemResponse(xml: string): CcbaItemResponse[] {
 	// XML 파싱 로직을 구현합니다.
-	const parser: DOMParser = new DOMParser();
-	const doc: Document = parser.parseFromString(xml, 'text/xml');
-	const items: NodeListOf<Element> = doc.querySelectorAll('item');
-	const results: CcbaItemResponse[] = [];
-	items.forEach((item) => {
-		const ccbaItem: CcbaItemResponse = {
-			sn: parseInt(item.querySelector('sn')?.textContent || '0', 10),
-			no: parseInt(item.querySelector('no')?.textContent || '0', 10),
-			ccmaName: item.querySelector('ccmaName')?.textContent || '',
-			ccbaMnm1: item.querySelector('ccbaMnm1')?.textContent || '',
-			ccbaMnm2: item.querySelector('ccbaMnm2')?.textContent || '',
-			ccbaCtcdNm: item.querySelector('ccbaCtcdNm')?.textContent || '',
-			ccsiName: item.querySelector('ccsiName')?.textContent || '',
-			ccbaAdmin: item.querySelector('ccbaAdmin')?.textContent || '',
-			ccbaKdcd: item.querySelector('ccbaKdcd')?.textContent || '',
-			ccbaCtcd: item.querySelector('ccbaCtcd')?.textContent || '',
-			ccbaAsno: item.querySelector('ccbaAsno')?.textContent || '',
-			ccbaCncl: item.querySelector('ccbaCncl')?.textContent || '',
-			ccbaCpno: item.querySelector('ccbaCpno')?.textContent || '',
-			longitude: item.querySelector('longitude')?.textContent || '',
-			latitude: item.querySelector('latitude')?.textContent || '',
-			regDt: item.querySelector('regDt')?.textContent || ''
-		};
-		results.push(ccbaItem);
-	});
-	return results;
+	const parser: XMLParser = new XMLParser();
+	const jsonDoc: CcbaItemAPIResponse = parser.parse(xml);
+	let items: CcbaItemResponse[] = jsonDoc.result.item;
+
+	for (const item of items) {
+		item.ccbaAsno.toString().length < 8 &&
+			(item.ccbaAsno = item.ccbaAsno.toString().padStart(8, '0'));
+	}
+
+	return items;
 }
 
 function parseXMLToCcbaItemImageResponse(xml: string): CcbaItemImageResponse {
 	// XML 파싱 로직을 구현합니다.
-	const parser: DOMParser = new DOMParser();
-	const doc: Document = parser.parseFromString(xml, 'text/xml');
-	const item: Element | null = doc.querySelector('item');
+	const parser: XMLParser = new XMLParser();
+	const jsonDoc = parser.parse(xml);
+	const result = jsonDoc.result;
 
-	if (!item) {
+	if (!result.item || result.item === undefined) {
 		return {
 			ccbaKdcd: '',
 			ccbaAsno: '',
@@ -139,15 +143,19 @@ function parseXMLToCcbaItemImageResponse(xml: string): CcbaItemImageResponse {
 	}
 
 	const results: CcbaItemImageResponse = {
-		ccbaKdcd: item.querySelector('ccbaKdcd')?.textContent || '',
-		ccbaAsno: item.querySelector('ccbaAsno')?.textContent || '',
-		ccbaCtcd: item.querySelector('ccbaCtcd')?.textContent || '',
-		ccbaMnm1: item.querySelector('ccbaMnm1')?.textContent || '',
-		ccbaMnm2: item.querySelector('ccbaMnm2')?.textContent || '',
-		sn: parseInt(item.querySelectorAll('sn')[0]?.textContent || '1', 10),
-		imageNuri: item.querySelectorAll('imageNuri')[0]?.textContent || '',
-		imageUrl: item.querySelectorAll('imageUrl')[0]?.textContent || '',
-		ccimDesc: item.querySelectorAll('ccimDesc')[0]?.textContent || ''
+		ccbaKdcd: result.ccbaKdcd || '',
+		ccbaAsno:
+			result.ccbaAsno.toString().length < 8
+				? result.ccbaAsno.toString().padStart(8, '0')
+				: result.ccbaAsno,
+		ccbaCtcd: result.ccbaCtcd || '',
+		ccbaMnm1: result.ccbaMnm1 || '',
+		ccbaMnm2: result.ccbaMnm2 || '',
+		sn: result.item.sn[0] || 0,
+		imageNuri: result.item.imageNuri[0] || '',
+		imageUrl: result.item.imageUrl[0] || '',
+		ccimDesc: result.item.ccimDesc[0] || ''
 	};
+
 	return results;
 }
