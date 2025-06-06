@@ -1,7 +1,7 @@
 <script lang="ts">
   import OffcanvasTab from '$components/ui/OffcanvasTab/OffcanvasTab.svelte';
   import { ccbaList, visitKorAreaCode2, searchFilter } from '$/stores/store';
-  import type { Category } from '$/stores/store';
+  import type { Category } from '$lib/searchTypes';
   import { Fa } from 'svelte-fa';
   import {
     faChevronRight,
