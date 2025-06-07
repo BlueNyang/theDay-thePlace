@@ -11,6 +11,9 @@ const API_KEY: string | undefined = env.OPEN_API_KEY;
 interface ApiRequestData {
 	searchKeyword: string;
 	searchFilter: Category[];
+	searchCcba?: boolean;
+	searchMuseum?: boolean;
+	pageNo: number;
 }
 
 // POST 요청에 대한 응답
@@ -32,9 +35,16 @@ export async function POST({ request }: RequestEvent): Promise<Response> {
 		)[0];
 
 		// CCBA 아이템 검색
-		const ccbaItems = await ccbaItemSearch(ccbaFilter, requestData.searchKeyword);
+		const ccbaItems =
+			requestData.searchCcba === undefined || requestData.searchCcba
+				? await ccbaItemSearch(ccbaFilter, requestData.searchKeyword, requestData.pageNo)
+				: [];
+
 		// Museum 아이템 검색
-		const museumItems = await museumItemSearch(museumFilter, requestData.searchKeyword);
+		const museumItems =
+			requestData.searchMuseum === undefined || requestData.searchMuseum
+				? await museumItemSearch(museumFilter, requestData.searchKeyword, requestData.pageNo)
+				: [];
 
 		// 응답 데이터 생성
 		const responseData: ServerResponse = {
@@ -42,7 +52,8 @@ export async function POST({ request }: RequestEvent): Promise<Response> {
 			museumItems: museumItems
 		};
 
-		return json(responseData);
+		// 응답을 JSON 형식으로 반환
+		return json(responseData, { status: 200 });
 
 		// CCBA는 API가 Keyword를 parameter로 받지 않으므로, 필터 검색 후,
 	} catch (error) {

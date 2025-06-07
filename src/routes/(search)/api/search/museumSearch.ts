@@ -15,27 +15,28 @@ const VISITKOREA_API_URL: string = 'https://apis.data.go.kr/B551011/KorService2'
 // museumFilter server.ts에서 국가유산 종목만 필터링된 Category 배열
 export async function museumItemSearch(
 	museumFilter: Category,
-	Keyword: string
+	Keyword: string,
+	pageNo: number
 ): Promise<SearchedMuseumItem[]> {
 	console.log('[museumSearch] museumItemSearch: called');
-	const isValidFilter =
+	const isInvalidFilter =
 		!museumFilter ||
 		!museumFilter.item ||
 		museumFilter.item.length === 0 ||
 		museumFilter === undefined;
 
-	const museumLocationFilter: Category[] = isValidFilter ? [] : museumFilter.item;
+	const museumLocationFilter: Category[] = isInvalidFilter ? [] : museumFilter.item;
 
 	let result: SearchedMuseumItem[] = [];
 
 	const apiType = Keyword === '' || !Keyword ? 'areaBasedSyncList2' : 'searchKeyword2';
-	if (isValidFilter) {
+	if (isInvalidFilter) {
 		await fetch(
 			`${VISITKOREA_API_URL}/${apiType}?serviceKey=${
 				API_KEY
 			}&MobileOS=WEB&MobileApp=TheDay_ThePlace&cat1=A02&cat2=A0206&cat3=A02060300&_type=json&${
 				apiType === 'searchKeyword2' ? `keyword=${encodeURIComponent(Keyword)}` : ''
-			}`
+			}&numOfRows=10&pageNo=${pageNo}`
 		).then(async (response) => {
 			await processingResponse(response)
 				.then((data) => {
@@ -54,7 +55,9 @@ export async function museumItemSearch(
 						API_KEY
 					}&MobileOS=WEB&MobileApp=TheDay_ThePlace&cat1=A02&cat2=A0206&cat3=A02060300&_type=json&${
 						cat2.code
-					}=${item.code}&${apiType === 'searchKeyword2' ? `keyword=${encodeURIComponent(Keyword)}` : ''}`
+					}=${item.code}&${
+						apiType === 'searchKeyword2' ? `keyword=${encodeURIComponent(Keyword)}` : ''
+					}&numOfRows=10&pageNo=${pageNo}`
 				).then(async (response) => {
 					await processingResponse(response)
 						.then((data) => {
@@ -83,6 +86,7 @@ async function processingResponse(response: Response): Promise<SearchedMuseumIte
 			title: mItem.title,
 			firstimage: mItem.firstimage || '',
 			addr1: mItem.addr1,
+			tel: mItem.tel || '',
 			mapx: mItem.mapx,
 			mapy: mItem.mapy
 		};

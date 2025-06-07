@@ -12,6 +12,8 @@
   import { onMount } from 'svelte';
   import { get } from 'svelte/store';
 
+  let { initCategoryList }: { initCategoryList?: Category[] } = $props();
+
   let categoryList: Category[] = $state([]);
 
   // 오프캔버스 탭을 열고 닫기 위한 상태 변수
@@ -194,9 +196,8 @@
     return false;
   }
 
-  onMount(() => {
-    mounted = true;
-
+  function setDefaultCategoryList(): void {
+    // 기본 카테고리 리스트를 설정하는 함수
     categoryList = [
       {
         code: 'ccba',
@@ -215,6 +216,17 @@
         ],
       },
     ];
+  }
+
+  onMount(() => {
+    mounted = true;
+    if (initCategoryList && initCategoryList.length > 0) {
+      // 초기 카테고리 리스트가 주어지면 해당 리스트를 사용
+      categoryList = initCategoryList;
+    } else {
+      // 초기 카테고리 리스트가 없으면 기본 카테고리 리스트를 설정
+      setDefaultCategoryList();
+    }
   });
 </script>
 

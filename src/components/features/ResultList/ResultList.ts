@@ -1,4 +1,3 @@
 export interface ResultListProps {
-	searchURL: string;
-	keyword: string;
+	isLoading: boolean;
 }

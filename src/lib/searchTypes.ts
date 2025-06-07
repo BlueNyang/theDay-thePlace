@@ -107,6 +107,7 @@ export interface SearchedMuseumItem {
 	title: string;
 	firstimage: string;
 	addr1: string;
+	tel: string;
 	mapx: string;
 	mapy: string;
 }
